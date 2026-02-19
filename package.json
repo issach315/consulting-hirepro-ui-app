@@ -1,13 +1,12 @@
 {
   "name": "consulting-ui",
+  "version": "0.0.1",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "start": "serve -s dist -l $PORT"
   },
   "dependencies": {
     "axios": "^1.13.2",
