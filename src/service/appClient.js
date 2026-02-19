@@ -3,7 +3,7 @@ import axios from "axios";
 /* ============================
    BASE URL (Vite)
 ============================ */
-const BASE_URL = "https://consulting-hirepro-service-development.up.railway.app/api";
+const BASE_URL = "https://consulting-hirepro-service-development.up.railway.app/api" ;
 
 /* ============================
    AXIOS INSTANCE (Cookie Based)

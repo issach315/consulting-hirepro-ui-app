@@ -46,28 +46,22 @@ export const getAllClients = async ({
   size = 10,
   sortBy = "createdAt",
   sortDirection = "DESC",
-  search,
   filters = {},
 }) => {
-  const params = {
-    page,
-    size,
-    sortBy,
-    sortDirection,
-  };
+  const params = { page, size, sortBy, sortDirection };
 
-  if (search) {
-    params.search = search;
+  // DataTable puts global search inside filters.globalSearch
+  const { globalSearch, ...columnFilters } = filters;
+
+  if (globalSearch) {
+    params.search = globalSearch;
   }
 
-  // Add dynamic filters like filter.status=ACTIVE
-  if (filters && Object.keys(filters).length > 0) {
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") {
-        params[`filter.${key}`] = value;
-      }
-    });
-  }
+  Object.entries(columnFilters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params[`filter.${key}`] = value;
+    }
+  });
 
   return apiGet(CLIENT_BASE, { params });
 };

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { DataTable, Drawer } from "@/components";
+import { DataTable } from "@/components";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import {
   getAllClients,
@@ -8,13 +8,16 @@ import {
   deleteClient,
 } from "@/service";
 
+import { useTableFetch } from "@/hooks"
+
 import ClientForm from "./ClientForm";
-import {ConfirmationModal} from "@/components";
+import {Modal} from "@/components";
+import { ConfirmationModal } from "@/components";
 
 const ClientsList = () => {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState("create");
+  const [modalMode, setModalMode] = useState("create");
   const [selectedClient, setSelectedClient] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -23,14 +26,14 @@ const ClientsList = () => {
   // -------------------------
   const openCreate = () => {
     setSelectedClient(null);
-    setDrawerMode("create");
-    setDrawerOpen(true);
+    setModalMode("create");
+    setModalOpen(true);
   };
 
   const openEdit = (client) => {
     setSelectedClient(client);
-    setDrawerMode("edit");
-    setDrawerOpen(true);
+    setModalMode("edit");
+    setModalOpen(true);
   };
 
   const openDelete = (client) => {
@@ -45,13 +48,13 @@ const ClientsList = () => {
     try {
       setLoading(true);
 
-      if (drawerMode === "create") {
+      if (modalMode === "create") {
         await createClient(values);
       } else {
         await updateClient(selectedClient.id, values);
       }
 
-      setDrawerOpen(false);
+      setModalOpen(false);
     } catch (err) {
       console.error(err);
     } finally {
@@ -109,21 +112,7 @@ const ClientsList = () => {
   // -------------------------
   // FETCH DATA
   // -------------------------
-  const fetchData = async (params) => {
-    const response = await getAllClients({
-      page: params.page - 1,
-      size: params.pageSize,
-    });
-
-    const apiData = response.data.data;
-
-    return {
-      data: apiData.content,
-      total: apiData.metadata.totalElements,
-      page: apiData.metadata.currentPage + 1,
-      totalPages: apiData.metadata.totalPages,
-    };
-  };
+ const fetchData = useTableFetch(getAllClients, { sortBy: "createdAt" });
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -131,7 +120,8 @@ const ClientsList = () => {
       <div className="mb-4 flex justify-end">
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md"
+          className="flex items-center gap-2 px-4 py-2 rounded-md text-white hover:opacity-90 transition"
+          style={{ backgroundColor: "#2A4DBD" }} // theme color
         >
           <Plus size={16} />
           Add Client
@@ -140,21 +130,21 @@ const ClientsList = () => {
 
       <DataTable columns={columns} fetchData={fetchData} initialPageSize={10} />
 
-      {/* CREATE / EDIT DRAWER */}
-      <Drawer
-        isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title={drawerMode === "create" ? "Register Client" : "Update Client"}
-        size="lg"
+      {/* CREATE / EDIT MODAL */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={modalMode === "create" ? "Register Client" : "Update Client"}
+        size="xl"
       >
         <ClientForm
-          mode={drawerMode}
+          mode={modalMode}
           initialValues={selectedClient}
           onSubmit={handleSubmit}
-          onCancel={() => setDrawerOpen(false)}
+          onCancel={() => setModalOpen(false)}
           loading={loading}
         />
-      </Drawer>
+      </Modal>
 
       {/* DELETE CONFIRMATION MODAL */}
       <ConfirmationModal

@@ -1,7 +1,7 @@
 import React from "react";
 import * as Yup from "yup";
 import { Building2, Hash, Globe, Activity, CreditCard } from "lucide-react";
-import FormBuilder from "@/components/FormBuilder";
+import {FormBuilder} from "@/components";
 
 const ClientForm = ({
   initialValues = {},
