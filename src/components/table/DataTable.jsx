@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Search,
@@ -18,11 +19,29 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
+// Custom hook for debouncing values
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 const DataTable = ({
   columns = [],
   fetchData,
   pageSizeOptions = [10, 25, 50, 100],
   initialPageSize = 10,
+  debounceDelay = 900, // Configurable debounce delay in milliseconds
 }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -36,13 +55,21 @@ const DataTable = ({
     field: null,
     direction: "asc",
   });
-  const [filters, setFilters] = useState({});
+  
+  // Separate state for immediate UI updates and debounced values for API calls
   const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState({});
+  
+  // Debounced values for API calls
+  const debouncedSearchQuery = useDebounce(searchQuery, debounceDelay);
+  const debouncedFilters = useDebounce(filters, debounceDelay);
+  
   const [visibleColumns, setVisibleColumns] = useState(
     columns.reduce((acc, col) => ({ ...acc, [col.field]: true }), {}),
   );
   const [showColumnSelector, setShowColumnSelector] = useState(false);
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const columnSelectorRef = useRef();
 
   const loadData = useCallback(async () => {
@@ -54,8 +81,8 @@ const DataTable = ({
         sortField: sortConfig.field,
         sortOrder: sortConfig.direction,
         filters: {
-          ...filters,
-          ...(searchQuery && { globalSearch: searchQuery }),
+          ...debouncedFilters,
+          ...(debouncedSearchQuery && { globalSearch: debouncedSearchQuery }),
         },
       };
       const result = await fetchData(params);
@@ -70,19 +97,34 @@ const DataTable = ({
       console.error("Error:", error);
     } finally {
       setLoading(false);
+      setIsSearching(false);
     }
   }, [
     pagination.page,
     pagination.pageSize,
     sortConfig,
-    filters,
-    searchQuery,
+    debouncedFilters,
+    debouncedSearchQuery,
     fetchData,
   ]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Track when user is typing (searching)
+  useEffect(() => {
+    if (searchQuery !== debouncedSearchQuery) {
+      setIsSearching(true);
+    }
+  }, [searchQuery, debouncedSearchQuery]);
+
+  // Track when filters are being typed
+  useEffect(() => {
+    if (JSON.stringify(filters) !== JSON.stringify(debouncedFilters)) {
+      setIsSearching(true);
+    }
+  }, [filters, debouncedFilters]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -99,12 +141,14 @@ const DataTable = ({
 
   const handlePageChange = (page) =>
     setPagination((prev) => ({ ...prev, page }));
+  
   const handlePageSizeChange = (e) =>
     setPagination((prev) => ({
       ...prev,
       pageSize: parseInt(e.target.value),
       page: 1,
     }));
+  
   const handleSort = (field, e) => {
     e.stopPropagation();
     setSortConfig((prev) => ({
@@ -113,6 +157,7 @@ const DataTable = ({
         prev.field === field && prev.direction === "asc" ? "desc" : "asc",
     }));
   };
+  
   const handleFilterChange = (field, value) => {
     setFilters((prev) => {
       const newFilters = { ...prev };
@@ -122,12 +167,15 @@ const DataTable = ({
     });
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
+  
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
+  
   const toggleColumn = (field) =>
     setVisibleColumns((prev) => ({ ...prev, [field]: !prev[field] }));
+  
   const resetFilters = () => {
     setFilters({});
     setSearchQuery("");
@@ -141,6 +189,7 @@ const DataTable = ({
     Object.keys(filters).filter(
       (key) => filters[key] && filters[key].trim() !== "",
     ).length;
+  
   const getPageNumbers = () => {
     const { totalPages, page } = pagination;
     const nums = [];
@@ -184,6 +233,11 @@ const DataTable = ({
               >
                 <X className="w-4 h-4" />
               </button>
+            )}
+            {isSearching && (
+              <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
+                <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+              </div>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -277,6 +331,9 @@ const DataTable = ({
               <h3 className="text-lg font-medium flex items-center gap-2">
                 <Filter className="w-5 h-5" />
                 Filters
+                {isSearching && (
+                  <RefreshCw className="w-4 h-4 text-blue-500 animate-spin ml-2" />
+                )}
               </h3>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">
@@ -330,8 +387,6 @@ const DataTable = ({
       {/* Main Table Container with Sticky logic */}
       <div className="bg-white rounded-lg shadow border overflow-hidden flex flex-col">
         <div className="overflow-auto max-h-[600px] relative">
-          {" "}
-          {/* Set a max-height to enable scrolling */}
           <table className="min-w-full divide-y divide-gray-200 table-fixed sm:table-auto">
             <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
               <tr>
